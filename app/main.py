@@ -75,6 +75,28 @@ def get_seat_map(event_id: int, db: Session = Depends(get_db)):
         ))
 
     return schemas.SeatMapOut(event=event, seats=seat_out)
+
+@app.patch("/seats/{seat_id}/block")
+def block_seat(seat_id: int, db: Session = Depends(get_db)):
+    seat = db.get(models.Seat, seat_id)
+    if not seat:
+        raise HTTPException(status_code=404, detail="Seat not found")
+    if seat.booking is not None:
+        raise HTTPException(status_code=400, detail="Cannot block a seat that is already booked")
+    seat.is_blocked = True
+    db.commit()
+    return {"status": "ok", "message": f"Seat {seat.label} blocked"}
+
+
+@app.patch("/seats/{seat_id}/unblock")
+def unblock_seat(seat_id: int, db: Session = Depends(get_db)):
+    seat = db.get(models.Seat, seat_id)
+    if not seat:
+        raise HTTPException(status_code=404, detail="Seat not found")
+    seat.is_blocked = False
+    db.commit()
+    return {"status": "ok", "message": f"Seat {seat.label} unblocked"}
+
 @app.post("/events/{event_id}/bookings", response_model=schemas.BookingOut, status_code=201)
 def create_booking(event_id: int, payload: schemas.BookingCreate, db: Session = Depends(get_db)):
     if not payload.seat_ids:
